@@ -18,6 +18,8 @@ export default function OnboardingPanel({
   items,
   states,
   onUpdateState,
+  onEditTitle,
+  onEditDescription,
   stageLabels
 }: any) {
   // Group items by stage
@@ -118,6 +120,8 @@ export default function OnboardingPanel({
                       item={item}
                       state={states.get(item.id)}
                       onUpdateState={(updates: any) => onUpdateState(item.id, updates)}
+                      onEditTitle={(itemId: string, old: string, new_val: string, name: string) => onEditTitle(itemId, old, new_val, name)}
+                      onEditDescription={(itemId: string, old: string, new_val: string, name: string) => onEditDescription(itemId, old, new_val, name)}
                     />
                   ))}
                 </div>

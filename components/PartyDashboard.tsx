@@ -4,13 +4,33 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import OnboardingPanel from './OnboardingPanel';
 
-const STAKEHOLDERS = [
-  { id: 'client', label: 'Client', accent: '#714DFF' },
-  { id: 'employee', label: 'Employee', accent: '#C026D3' },
-  { id: 'icp', label: 'ICP', accent: '#0D9488' },
-  { id: 'navro', label: 'Navro', accent: '#2563EB' },
-  { id: 'internal', label: 'Internal', accent: '#475569' }
-];
+const STAKEHOLDER_INFO: Record<string, { label: string; short: string; accent: string }> = {
+  client: {
+    label: 'Client',
+    short: 'C',
+    accent: '#714DFF'
+  },
+  employee: {
+    label: 'Employee',
+    short: 'E',
+    accent: '#C026D3'
+  },
+  icp: {
+    label: 'ICP',
+    short: 'I',
+    accent: '#0D9488'
+  },
+  navro: {
+    label: 'Navro',
+    short: 'N',
+    accent: '#2563EB'
+  },
+  internal: {
+    label: 'Internal',
+    short: '⌘',
+    accent: '#475569'
+  }
+};
 
 const STAGES = {
   1: 'Country config',
@@ -21,18 +41,56 @@ const STAGES = {
   6: 'Payments'
 };
 
-export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('client');
+const STATUS_COLORS = {
+  pending: 'bg-gray-100 text-gray-700',
+  progress: 'bg-blue-100 text-blue-700',
+  waiting: 'bg-yellow-100 text-yellow-700',
+  blocked: 'bg-red-100 text-red-700',
+  complete: 'bg-green-100 text-green-700'
+};
+
+const STATUS_ORDER = ['pending', 'progress', 'waiting', 'blocked', 'complete'];
+
+export default function PartyDashboard({ party }: { party: string }) {
   const [items, setItems] = useState<any[]>([]);
   const [states, setStates] = useState<Map<string, any>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState('Synced');
 
   const supabase = createClient();
+  const partyInfo = STAKEHOLDER_INFO[party as keyof typeof STAKEHOLDER_INFO];
+
+  if (!partyInfo) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center text-red-600 max-w-md">
+          <p className="text-lg font-semibold">Party not found</p>
+          <p className="text-sm mt-2 mb-4">
+            Requested: <code className="bg-red-50 px-2 py-1 rounded">{party}</code>
+          </p>
+          <p className="text-sm mb-4">Available parties:</p>
+          <div className="flex flex-wrap gap-2 justify-center mb-6">
+            {Object.keys(STAKEHOLDER_INFO).map(p => (
+              <a
+                key={p}
+                href={`/${p}`}
+                className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm font-medium hover:bg-purple-200"
+              >
+                {p}
+              </a>
+            ))}
+          </div>
+          <a href="/" className="text-purple-600 hover:text-purple-700 font-medium">
+            ← Back to home
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     loadData();
-    // Subscribe to real-time updates
     const subscription = supabase
       .channel('item_states_changes')
       .on(
@@ -45,12 +103,12 @@ export default function Dashboard() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [party]);
 
   async function loadData() {
     try {
       const [itemsRes, statesRes] = await Promise.all([
-        supabase.from('onboarding_items').select('*'),
+        supabase.from('onboarding_items').select('*').eq('stakeholder_id', party),
         supabase.from('item_states').select('*')
       ]);
 
@@ -64,6 +122,7 @@ export default function Dashboard() {
       setIsLoading(false);
     } catch (err) {
       console.error('Failed to load data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load');
     }
   }
 
@@ -96,13 +155,11 @@ export default function Dashboard() {
   async function editItemTitle(itemId: string, oldValue: string, newValue: string, editorName: string) {
     setSyncStatus('Saving...');
     try {
-      // Update the item title
       await supabase
         .from('onboarding_items')
         .update({ title: newValue, last_edited_by: editorName, last_edited_at: new Date().toISOString() })
         .eq('id', itemId);
 
-      // Record in edit history
       await supabase
         .from('edit_history')
         .insert([{
@@ -126,13 +183,11 @@ export default function Dashboard() {
   async function editItemDescription(itemId: string, oldValue: string, newValue: string, editorName: string) {
     setSyncStatus('Saving...');
     try {
-      // Update the item description
       await supabase
         .from('onboarding_items')
         .update({ description: newValue, last_edited_by: editorName, last_edited_at: new Date().toISOString() })
         .eq('id', itemId);
 
-      // Record in edit history
       await supabase
         .from('edit_history')
         .insert([{
@@ -153,13 +208,29 @@ export default function Dashboard() {
     }
   }
 
-  const currentStakeholder = STAKEHOLDERS.find(s => s.id === activeTab);
-  const activeItems = items.filter(item => item.stakeholder_id === activeTab);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="inline-block w-8 h-8 border-4 border-gray-300 border-t-purple-600 rounded-full animate-spin"></div>
+          <p className="mt-4 text-gray-600">Loading {partyInfo.label} onboarding...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const totalItems = items.filter(
-    item => !item.is_removed
-  ).length;
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center text-red-600">
+          <p className="text-lg font-semibold">Error loading dashboard</p>
+          <p className="text-sm mt-2">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
+  const totalItems = items.filter(item => !item.is_removed).length;
   const completeItems = items
     .filter(item => !item.is_removed)
     .filter(item => {
@@ -168,39 +239,42 @@ export default function Dashboard() {
     }).length;
 
   const verifiedCount = items
-    .filter(item => !item.is_removed && item.stakeholder_id === activeTab)
+    .filter(item => !item.is_removed)
     .filter(item => item.is_verified).length;
 
-  const activeTabItems = activeItems.filter(item => !item.is_removed);
-  const unverifiedCount = activeTabItems.length - verifiedCount;
+  const unverifiedCount = items.filter(item => !item.is_removed).length - verifiedCount;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="inline-block w-8 h-8 border-4 border-gray-300 border-t-purple-600 rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  const statusCounts = {
+    pending: 0,
+    progress: 0,
+    waiting: 0,
+    blocked: 0,
+    complete: 0
+  };
+
+  items
+    .filter(item => !item.is_removed)
+    .forEach(item => {
+      const state = states.get(item.id);
+      const status = state?.status || 'pending';
+      statusCounts[status as keyof typeof statusCounts]++;
+    });
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="sticky top-0 z-100 bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-6">
           <div className="flex items-start justify-between mb-6">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-6 h-6 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
-                  n
+                  {partyInfo.short}
                 </div>
-                <span className="font-bold text-sm">niural / Global Payroll</span>
+                <span className="font-bold text-sm">niural / {partyInfo.label}</span>
               </div>
-              <h1 className="text-2xl font-semibold mb-1">Onboarding & payment readiness</h1>
+              <h1 className="text-2xl font-semibold mb-1">{partyInfo.label} Onboarding</h1>
               <p className="text-sm text-gray-600">
-                Every item below is a prerequisite to paying a worker. Track ownership, status, and the gates that block downstream work.
+                Track your onboarding prerequisites for global payroll.
               </p>
             </div>
             <div className="text-right">
@@ -220,42 +294,18 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 border-b border-gray-200">
-            {STAKEHOLDERS.map(stakeholder => {
-              const count = activeItems.filter(
-                item => item.stakeholder_id === stakeholder.id && !item.is_removed
-              ).length;
-              const complete = activeItems
-                .filter(item => item.stakeholder_id === stakeholder.id && !item.is_removed)
-                .filter(item => states.get(item.id)?.status === 'complete').length;
-
-              return (
-                <button
-                  key={stakeholder.id}
-                  onClick={() => setActiveTab(stakeholder.id)}
-                  className={`px-4 py-3 text-sm font-medium border-b-2 transition ${
-                    activeTab === stakeholder.id
-                      ? 'border-purple-600 text-gray-900'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  {stakeholder.label}
-                  <span className="ml-2 text-xs text-gray-500">
-                    {complete}/{count}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="text-xs">
+            <a href="/" className="text-purple-600 hover:text-purple-700 font-medium">
+              ← Back to all parties
+            </a>
           </div>
         </div>
       </header>
 
-      {/* Content */}
       <main className="max-w-6xl mx-auto px-6 py-8">
         <OnboardingPanel
-          stakeholder={activeTab}
-          items={activeItems}
+          stakeholder={party}
+          items={items}
           states={states}
           onUpdateState={updateItemState}
           onEditTitle={editItemTitle}

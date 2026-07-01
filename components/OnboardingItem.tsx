@@ -22,12 +22,20 @@ const STATUS_DOT = {
 export default function OnboardingItem({
   item,
   state,
-  onUpdateState
+  onUpdateState,
+  onEditTitle,
+  onEditDescription
 }: any) {
   const currentStatus = state?.status || 'pending';
   const [showNotes, setShowNotes] = useState(!!state?.notes);
   const [notes, setNotes] = useState(state?.notes || '');
   const [date, setDate] = useState(state?.completed_date || '');
+
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(item.title);
+  const [editedDescription, setEditedDescription] = useState(item.description);
+  const [editorName, setEditorName] = useState('');
 
   const handleStatusClick = () => {
     const nextStatus = STATUS_ORDER[(STATUS_ORDER.indexOf(currentStatus) + 1) % STATUS_ORDER.length];
@@ -42,6 +50,28 @@ export default function OnboardingItem({
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDate(e.target.value);
     onUpdateState({ completed_date: e.target.value });
+  };
+
+  const handleSaveTitle = async () => {
+    if (editedTitle !== item.title) {
+      const name = editorName.trim() || prompt('Who is making this edit?');
+      if (name) {
+        await onEditTitle(item.id, item.title, editedTitle, name);
+        setEditorName('');
+      }
+    }
+    setEditingTitle(false);
+  };
+
+  const handleSaveDescription = async () => {
+    if (editedDescription !== item.description) {
+      const name = editorName.trim() || prompt('Who is making this edit?');
+      if (name) {
+        await onEditDescription(item.id, item.description, editedDescription, name);
+        setEditorName('');
+      }
+    }
+    setEditingDescription(false);
   };
 
   return (
@@ -74,9 +104,89 @@ export default function OnboardingItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <h3 className="font-medium text-gray-900 mb-1">{item.title}</h3>
-              {item.description && (
-                <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+              {/* Title editing */}
+              {editingTitle ? (
+                <div className="mb-2">
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    onBlur={handleSaveTitle}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
+                    className="w-full px-2 py-1 border border-purple-300 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    autoFocus
+                  />
+                  <input
+                    type="text"
+                    placeholder="Your name (optional)"
+                    value={editorName}
+                    onChange={(e) => setEditorName(e.target.value)}
+                    className="w-full mt-1 px-2 py-1 border border-gray-200 rounded text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-purple-300"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-1 group">
+                  <h3 className="font-medium text-gray-900">{item.title}</h3>
+                  <button
+                    onClick={() => setEditingTitle(true)}
+                    className="opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-purple-600"
+                    title="Edit title"
+                  >
+                    ✏️
+                  </button>
+                  {item.is_verified ? (
+                    <span className="inline-block px-2 py-0.5 text-xs font-semibold text-green-700 bg-green-100 rounded">
+                      ✅ Verified
+                    </span>
+                  ) : (
+                    <span className="inline-block px-2 py-0.5 text-xs font-semibold text-yellow-700 bg-yellow-100 rounded">
+                      📝 Draft
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Description editing */}
+              {editingDescription ? (
+                <div className="mb-2">
+                  <textarea
+                    value={editedDescription}
+                    onChange={(e) => setEditedDescription(e.target.value)}
+                    onBlur={handleSaveDescription}
+                    className="w-full px-2 py-1 border border-purple-300 rounded text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    rows={3}
+                    autoFocus
+                  />
+                  <input
+                    type="text"
+                    placeholder="Your name (optional)"
+                    value={editorName}
+                    onChange={(e) => setEditorName(e.target.value)}
+                    className="w-full mt-1 px-2 py-1 border border-gray-200 rounded text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-purple-300"
+                  />
+                </div>
+              ) : (
+                <div className="group">
+                  {item.description && (
+                    <div className="flex items-start gap-2">
+                      <p className="text-sm text-gray-600 mb-2 flex-1">{item.description}</p>
+                      <button
+                        onClick={() => setEditingDescription(true)}
+                        className="opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-purple-600 flex-shrink-0"
+                        title="Edit description"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {item.last_edited_by && (
+                <p className="text-xs text-gray-500">
+                  Last edited by {item.last_edited_by}
+                  {item.last_edited_at && ` on ${new Date(item.last_edited_at).toLocaleDateString()}`}
+                </p>
               )}
             </div>
             <div className="flex gap-2 flex-shrink-0">
