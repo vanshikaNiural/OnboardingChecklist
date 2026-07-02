@@ -27,7 +27,6 @@ export default function OnboardingPanel({
 }: any) {
   const [dragOverItem, setDragOverItem] = useState<string | null>(null);
 
-  // Group items by stage, filter transfer-only items
   const groupedByStage = useMemo(() => {
     const groups: { [key: number]: any[] } = {};
     items
@@ -38,13 +37,6 @@ export default function OnboardingPanel({
         }
         return true;
       })
-      .sort((a: any, b: any) => {
-        if (onboardingType === 'transfer') {
-          if (a.transfer_only && !b.transfer_only) return -1;
-          if (!a.transfer_only && b.transfer_only) return 1;
-        }
-        return 0;
-      })
       .forEach((item: any) => {
         if (!groups[item.stage_num]) {
           groups[item.stage_num] = [];
@@ -54,7 +46,6 @@ export default function OnboardingPanel({
     return groups;
   }, [items, onboardingType]);
 
-  // Count statuses for this stakeholder
   const statusCounts = useMemo(() => {
     const counts = {
       pending: 0,
@@ -89,37 +80,15 @@ export default function OnboardingPanel({
   const handleDropItem = (e: React.DragEvent, targetItemId: string) => {
     e.preventDefault();
     e.stopPropagation();
-
     const draggedItemId = e.dataTransfer!.getData('itemId');
-
     if (draggedItemId && draggedItemId !== targetItemId && onChangeStage) {
       onChangeStage(draggedItemId, targetItemId);
     }
     setDragOverItem(null);
   };
 
-  const renderItems = (itemsToRender: any[]) => {
-    return itemsToRender.map((item: any) => (
-      <OnboardingItem
-        key={item.id}
-        item={item}
-        state={states.get(item.id)}
-        onUpdateState={(updates: any) => onUpdateState(item.id, updates)}
-        onEditTitle={(itemId: string, old: string, new_val: string, name: string) => onEditTitle(itemId, old, new_val, name)}
-        onEditDescription={(itemId: string, old: string, new_val: string, name: string) => onEditDescription(itemId, old, new_val, name)}
-        onDelete={(itemId: string) => onDelete(itemId)}
-        onChangeStage={(itemId: string, newStage: number) => onChangeStage(itemId, newStage)}
-        isDraggingOver={dragOverItem === item.id}
-        onDragOver={(e: any) => handleDragOverItem(e, item.id)}
-        onDragLeave={handleDragLeaveItem}
-        onDrop={(e: any) => handleDropItem(e, item.id)}
-      />
-    ));
-  };
-
   return (
     <div>
-      {/* Status summary */}
       <div className="flex flex-wrap gap-2 mb-6">
         {STATUS_ORDER.map(status => (
           <div
@@ -136,7 +105,6 @@ export default function OnboardingPanel({
         ))}
       </div>
 
-      {/* Regular stages */}
       <div className="space-y-6">
         {Object.entries(groupedByStage)
           .sort(([a], [b]) => parseInt(a) - parseInt(b))
@@ -174,15 +142,29 @@ export default function OnboardingPanel({
                   </div>
                 </div>
                 <div className="divide-y divide-gray-200">
-                  {renderItems(nonTransferItems)}
+                  {nonTransferItems.map((item: any) => (
+                    <OnboardingItem
+                      key={item.id}
+                      item={item}
+                      state={states.get(item.id)}
+                      onUpdateState={(updates: any) => onUpdateState(item.id, updates)}
+                      onEditTitle={(itemId: string, old: string, new_val: string, name: string) => onEditTitle(itemId, old, new_val, name)}
+                      onEditDescription={(itemId: string, old: string, new_val: string, name: string) => onEditDescription(itemId, old, new_val, name)}
+                      onDelete={(itemId: string) => onDelete(itemId)}
+                      onChangeStage={(itemId: string, newStage: number) => onChangeStage(itemId, newStage)}
+                      isDraggingOver={dragOverItem === item.id}
+                      onDragOver={(e: any) => handleDragOverItem(e, item.id)}
+                      onDragLeave={handleDragLeaveItem}
+                      onDrop={(e: any) => handleDropItem(e, item.id)}
+                    />
+                  ))}
                 </div>
               </div>
             );
           })}
       </div>
 
-      {/* Transfer-specific section (only in transfer mode) */}
-      {onboardingType === 'transfer' && Object.values(groupedByStage).some(items => (items as any[]).some(i => i.transfer_only)) && (
+      {onboardingType === 'transfer' && Object.values(groupedByStage).flat().some((item: any) => item.transfer_only) && (
         <div className="mt-6 border border-purple-200 rounded-lg overflow-hidden bg-purple-50">
           <div className="bg-purple-100 border-b border-purple-200 px-6 py-4">
             <div className="text-sm font-semibold text-purple-700 uppercase tracking-wider">
@@ -190,11 +172,25 @@ export default function OnboardingPanel({
             </div>
           </div>
           <div className="divide-y divide-gray-200">
-            {renderItems(
-              Object.values(groupedByStage)
-                .flat()
-                .filter(item => item.transfer_only)
-            )}
+            {Object.values(groupedByStage)
+              .flat()
+              .filter((item: any) => item.transfer_only)
+              .map((item: any) => (
+                <OnboardingItem
+                  key={item.id}
+                  item={item}
+                  state={states.get(item.id)}
+                  onUpdateState={(updates: any) => onUpdateState(item.id, updates)}
+                  onEditTitle={(itemId: string, old: string, new_val: string, name: string) => onEditTitle(itemId, old, new_val, name)}
+                  onEditDescription={(itemId: string, old: string, new_val: string, name: string) => onEditDescription(itemId, old, new_val, name)}
+                  onDelete={(itemId: string) => onDelete(itemId)}
+                  onChangeStage={(itemId: string, newStage: number) => onChangeStage(itemId, newStage)}
+                  isDraggingOver={dragOverItem === item.id}
+                  onDragOver={(e: any) => handleDragOverItem(e, item.id)}
+                  onDragLeave={handleDragLeaveItem}
+                  onDrop={(e: any) => handleDropItem(e, item.id)}
+                />
+              ))}
           </div>
         </div>
       )}
