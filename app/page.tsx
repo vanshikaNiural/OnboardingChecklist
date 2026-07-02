@@ -152,23 +152,25 @@ async function seedDatabase(supabase: any) {
   // Full original data from validation with Liz
   const DATA = {
     client: [
-      { stage: 2, items: [
-        { t: "Account activation completed", d: "Client activates the global payroll product for their account.", rv: { tag: "renamed", type: "changed", note: "Was \"Product activation completed.\" Liz: \"I'd say account activation completed.\"" } },
-        { sub: "Verification (KYC / AML)" },
-        { t: "Entity details submitted", d: "Legal entity name, DBA, country of incorporation, entity type, date of incorporation, local registration number, company website, phone, employee count, nature of business, registered address, mailing address.", rv: { tag: "restructured", type: "changed", note: "Renamed to Verification (KYC/AML). Tax IDs and formation docs now grouped under this section." } },
-        { t: "Business formation documents uploaded", d: "Formation documents (not only incorporation). Includes Ultimate Beneficial Owner (UBO) details: anyone with ≥15% ownership (UK/EU) or ≥25% (US). Complex structures (hedge funds, layered ownership) need manual review and can delay go-live if missed.", rv: { tag: "renamed", type: "changed", note: "Was \"Incorporation docs uploaded.\" Liz: \"It's not just incorporation docs — call it business formation.\" UBO requirement added." } },
-        { t: "Tax IDs provided", d: "All applicable tax identification numbers for the entity (EIN, VAT, local tax ID per country)." },
-        { t: "Bank details submitted", gate: true, d: "Entity bank account details — capture bank country and funding currency (USD vs local). Required for bank verification and funding capability.", rv: { tag: "expanded", type: "changed", note: "Liz: \"What country is the bank account in? Are we funding in USD or local currency?\"" } },
-        { t: "Signatories designated", d: "Authorized signatories identified and confirmed.", rv: { tag: "removed", type: "removed", note: "Liz: \"I don't think we need that — it's only asked when I send an MSA or similar.\"" } },
-        { t: "Billing info configured", d: "Billing setup type and payment method for Niural platform fees." },
-        { t: "KYB verified", gate: true, d: "Three-party gate: client provides ownership docs, address proof, identity and bank verification → validated → Internal approves global payroll. Once verified, ops switches the account to verified in-platform. Unlocks bank payments, funding, and payout readiness.", rv: { tag: "updated", type: "changed", note: "Liz: \"Once verified, we switch it to verified in-platform and the account is active.\" Partner-agnostic language." } }
+      { stage: 2, tier: "required-early", items: [
+        { t: "Client introduced", d: "First conversation with the client to understand their setup, payroll volume, countries, and timeline." },
+        { t: "Business formation documents uploaded", d: "Formation documents (not only incorporation). Includes Ultimate Beneficial Owner (UBO) details: anyone with ≥15% ownership (UK/EU) or ≥25% (US). Complex structures (hedge funds, layered ownership) need manual review and can delay go-live if missed.", rv: { tag: "verified", type: "changed", note: "Verified against Campfire (complex hedge fund) and Broadpeak emails." } }
       ]},
-      { stage: 3, items: [
-        { t: "Employee details entered", d: "Per employee: personal details (include personal email, not only work email), employment details, compensation type and amount, and org position." },
-        { t: "Employee agreements and documents submitted", d: "Client provides pre-signed employment agreements and related documents. Niural does not generate contracts — they come from the client.", rv: { tag: "renamed", type: "changed", note: "Was \"Employment agreements + documents configured.\" Liz: \"We're not creating contracts — the client issues agreements to their workers.\"" } }
+      { stage: 2, tier: "no-fixed-order", items: [
+        { t: "Initial payment", d: "Manual invoice issued through Niural's AR system, tied to order form signing. Separate from the automated per-employee payslip fees. Confirmed for GP — distinct from the EOR deposit invoice." },
+        { t: "Confirm funding method", d: "Entity bank account details — capture bank country and funding currency (USD vs local). Required for bank verification and funding capability." },
+        { t: "Confirm foreign banking details", gate: true, d: "Local in-country bank account needed so statutory bodies (e.g. HMRC, NEST) can auto-debit/pay. If the client doesn't have one, Niural helps set it up." }
       ]},
-      { stage: 5, recurring: true, items: [
-        { t: "Payroll files reviewed and approved each cycle", gate: true, recurring: true, d: "Payroll files submitted for client review. The client reviews and approves the run each cycle before the funding instruction is sent.", rv: { tag: "reworded", type: "changed", note: "Liz: \"I'd put payroll files submitted for client review and approval.\" Partner references removed." } }
+      { stage: 3, tier: "no-fixed-order", items: [
+        { t: "Submit signed employment agreements", gate: true, d: "Client provides pre-signed employment agreements and related documents for each employee. Niural does not generate contracts — they come from the client." }
+      ]},
+      { stage: 5, tier: "recurring", recurring: true, items: [
+        { t: "Approve payroll each cycle", gate: true, recurring: true, d: "Client reviews and approves the payroll run before funds are released. Happens every pay cycle." }
+      ]},
+      { stage: 2, tier: "transfer-only", transfer: true, items: [
+        { t: "Introduce us to your current payroll provider", d: "Send an introduction connecting our team with your current provider's account manager so we can coordinate the transition." },
+        { t: "Confirm your target go-live date", gate: true, d: "Agree on a go-live date with us. There will be no changes to salary, benefits, seniority, or pay schedule when you move to Niural." },
+        { t: "Help us gather data from your current provider", gate: true, d: "Your current provider needs to send us your year-to-date payroll data and employee records by the agreed deadline. Please help coordinate with them to get it completed on time — missing this deadline may delay your go-live." }
       ]}
     ],
     employee: [
@@ -281,7 +283,9 @@ async function seedDatabase(supabase: any) {
             is_verified: isVerified,
             last_edited_by: isVerified ? 'Liz (validation session)' : null,
             last_edited_at: isVerified ? new Date().toISOString() : null,
-            order_index: orderIndex++
+            order_index: orderIndex++,
+            tier: group.tier || 'default',
+            transfer_only: item.transfer || false
           });
         }
       });

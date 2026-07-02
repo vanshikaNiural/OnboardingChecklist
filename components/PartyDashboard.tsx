@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import OnboardingPanel from './OnboardingPanel';
 import AddItemModal from './AddItemModal';
+import OnboardingTypeToggle, { OnboardingType, getStoredOnboardingType } from './OnboardingTypeToggle';
 
 const STAKEHOLDER_INFO: Record<string, { label: string; short: string; accent: string }> = {
   client: {
@@ -59,6 +60,7 @@ export default function PartyDashboard({ party }: { party: string }) {
   const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState('Synced');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [onboardingType, setOnboardingType] = useState<OnboardingType>('new');
 
   const supabase = createClient();
   const partyInfo = STAKEHOLDER_INFO[party as keyof typeof STAKEHOLDER_INFO];
@@ -90,6 +92,14 @@ export default function PartyDashboard({ party }: { party: string }) {
       </div>
     );
   }
+
+  useEffect(() => {
+    // Load stored onboarding type for this party
+    if (party === 'client') {
+      const stored = getStoredOnboardingType(party);
+      setOnboardingType(stored);
+    }
+  }, [party]);
 
   useEffect(() => {
     loadData();
@@ -372,10 +382,17 @@ export default function PartyDashboard({ party }: { party: string }) {
             </div>
           </div>
 
-          <div className="text-xs flex items-center gap-4">
-            <a href="/" className="text-purple-600 hover:text-purple-700 font-medium">
+          <div className="flex items-center justify-between">
+            <a href="/" className="text-xs text-purple-600 hover:text-purple-700 font-medium">
               ← Back to all parties
             </a>
+            {party === 'client' && (
+              <OnboardingTypeToggle
+                entityId={party}
+                value={onboardingType}
+                onChange={setOnboardingType}
+              />
+            )}
             <button
               onClick={() => setShowAddModal(true)}
               className="px-3 py-1 bg-purple-600 text-white rounded text-sm font-medium hover:bg-purple-700"
@@ -397,6 +414,7 @@ export default function PartyDashboard({ party }: { party: string }) {
           onDelete={deleteItem}
           onChangeStage={changeItemStage}
           stageLabels={STAGES}
+          onboardingType={onboardingType}
         />
       </main>
 

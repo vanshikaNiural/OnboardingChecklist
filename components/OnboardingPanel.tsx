@@ -13,6 +13,13 @@ const STATUS_COLORS = {
 
 const STATUS_ORDER = ['pending', 'progress', 'waiting', 'blocked', 'complete'];
 
+const TIER_LABELS: Record<string, string> = {
+  'required-early': 'Required early',
+  'no-fixed-order': 'No fixed order — complete as they come up',
+  'recurring': 'Recurring',
+  'transfer-only': 'Transfer-specific steps'
+};
+
 export default function OnboardingPanel({
   stakeholder,
   items,
@@ -22,15 +29,23 @@ export default function OnboardingPanel({
   onEditDescription,
   onDelete,
   onChangeStage,
-  stageLabels
+  stageLabels,
+  onboardingType = 'new'
 }: any) {
   const [dragOverItem, setDragOverItem] = useState<string | null>(null);
 
-  // Group items by stage
+  // Group items by stage, filtering transfer-only items
   const groupedByStage = useMemo(() => {
     const groups: { [key: number]: any[] } = {};
     items
       .filter((item: any) => !item.is_removed)
+      .filter((item: any) => {
+        // Hide transfer-only items if not in transfer mode
+        if (item.transfer_only && onboardingType !== 'transfer') {
+          return false;
+        }
+        return true;
+      })
       .forEach((item: any) => {
         if (!groups[item.stage_num]) {
           groups[item.stage_num] = [];
@@ -38,7 +53,7 @@ export default function OnboardingPanel({
         groups[item.stage_num].push(item);
       });
     return groups;
-  }, [items]);
+  }, [items, onboardingType]);
 
   // Count statuses for this stakeholder
   const statusCounts = useMemo(() => {
@@ -105,12 +120,29 @@ export default function OnboardingPanel({
 
       {/* Stages */}
       <div className="space-y-6">
-        {Object.entries(groupedByStage)
-          .sort(([a], [b]) => parseInt(a) - parseInt(b))
-          .map(([stageNum, stageItems]) => {
+        {(() => {
+          const stageEntries = Object.entries(groupedByStage)
+            .sort(([a], [b]) => parseInt(a) - parseInt(b));
+
+          const seenTiers = new Set<string>();
+
+          return stageEntries.map(([stageNum, stageItems]) => {
+            const firstItemTier = (stageItems as any[])[0]?.tier || 'default';
+            const showTierLabel = !seenTiers.has(firstItemTier) && firstItemTier !== 'default';
+
+            if (showTierLabel) {
+              seenTiers.add(firstItemTier);
+            }
+
             const hasGate = (stageItems as any[]).some((item: any) => item.is_gate);
 
             return (
+              <div key={`tier-${stageNum}`}>
+                {showTierLabel && (
+                  <div className="text-sm font-semibold text-purple-700 uppercase tracking-wider mb-4 px-1">
+                    {TIER_LABELS[firstItemTier] || firstItemTier}
+                  </div>
+                )}
               <div
                 key={stageNum}
                 className="border border-gray-200 rounded-lg overflow-hidden"
@@ -162,8 +194,10 @@ export default function OnboardingPanel({
                   ))}
                 </div>
               </div>
+              </div>
             );
-          })}
+          });
+        })()}
       </div>
     </div>
   );
