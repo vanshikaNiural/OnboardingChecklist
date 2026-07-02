@@ -132,59 +132,72 @@ export default function OnboardingPanel({
           const stageEntries = Object.entries(groupedByStage)
             .sort(([a], [b]) => parseInt(a) - parseInt(b));
 
-          const seenTiers = new Set<string>();
-
           return stageEntries.map(([stageNum, stageItems]) => {
-            const firstItemTier = (stageItems as any[])[0]?.tier || 'default';
-            const showTierLabel = !seenTiers.has(firstItemTier) && firstItemTier !== 'default';
+            // Group items by tier within the stage
+            const itemsByTier: { [key: string]: any[] } = {};
+            (stageItems as any[]).forEach((item: any) => {
+              const tier = item.tier || 'default';
+              if (!itemsByTier[tier]) {
+                itemsByTier[tier] = [];
+              }
+              itemsByTier[tier].push(item);
+            });
 
-            if (showTierLabel) {
-              seenTiers.add(firstItemTier);
-            }
+            // Sort tiers: transfer-only first (if in transfer mode), then others
+            const tierOrder = onboardingType === 'transfer'
+              ? ['transfer-only', 'required-early', 'no-fixed-order', 'recurring', 'default']
+              : ['required-early', 'no-fixed-order', 'recurring', 'transfer-only', 'default'];
 
-            const hasGate = (stageItems as any[]).some((item: any) => item.is_gate);
+            const sortedTiers = Object.keys(itemsByTier).sort((a, b) => {
+              const aIndex = tierOrder.indexOf(a);
+              const bIndex = tierOrder.indexOf(b);
+              return aIndex - bIndex;
+            });
 
             return (
-              <div key={`tier-${stageNum}`}>
-                {showTierLabel && (
-                  <div className="text-sm font-semibold text-purple-700 uppercase tracking-wider mb-4 px-1">
-                    {TIER_LABELS[firstItemTier] || firstItemTier}
-                  </div>
-                )}
-              <div
-                key={stageNum}
-                className="border border-gray-200 rounded-lg overflow-hidden"
-              >
-                {/* Stage header */}
-                <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-purple-100 text-purple-700 rounded flex items-center justify-center text-sm font-semibold">
-                      {stageNum}
+              <div key={`stage-${stageNum}`}>
+                {sortedTiers.map((tier) => {
+                  const tierItems = itemsByTier[tier];
+                  const hasGate = tierItems.some((item: any) => item.is_gate);
+                  {tier !== 'default' && (
+                    <div className="text-sm font-semibold text-purple-700 uppercase tracking-wider mb-4 px-6 py-2">
+                      {TIER_LABELS[tier] || tier}
                     </div>
-                    <div>
-                      <div className="text-xs font-semibold text-purple-700 uppercase tracking-wider">
-                        Stage {stageNum}
-                      </div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        {stageLabels[stageNum as keyof typeof stageLabels]}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {hasGate && (
-                      <span className="text-xs font-semibold text-gray-600 bg-white px-2 py-1 rounded border border-gray-300">
-                        🔒 gate
-                      </span>
-                    )}
-                    <span className="text-sm font-mono text-gray-600">
-                      {(stageItems as any[]).length}
-                    </span>
-                  </div>
-                </div>
+                  )}
 
-                {/* Items */}
-                <div className="divide-y divide-gray-200">
-                  {(stageItems as any[]).map((item: any) => (
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Stage header - only show for first tier */}
+                    {tier === sortedTiers[0] && (
+                      <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-purple-100 text-purple-700 rounded flex items-center justify-center text-sm font-semibold">
+                            {stageNum}
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-purple-700 uppercase tracking-wider">
+                              Stage {stageNum}
+                            </div>
+                            <div className="text-sm font-semibold text-gray-900">
+                              {stageLabels[stageNum as keyof typeof stageLabels]}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {hasGate && (
+                            <span className="text-xs font-semibold text-gray-600 bg-white px-2 py-1 rounded border border-gray-300">
+                              🔒 gate
+                            </span>
+                          )}
+                          <span className="text-sm font-mono text-gray-600">
+                            {(stageItems as any[]).length}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Items */}
+                    <div className="divide-y divide-gray-200">
+                      {tierItems.map((item: any) => (
                     <OnboardingItem
                       key={item.id}
                       item={item}
@@ -199,9 +212,10 @@ export default function OnboardingPanel({
                       onDragLeave={handleDragLeaveItem}
                       onDrop={(e: any) => handleDropItem(e, item.id)}
                     />
-                  ))}
-                </div>
-              </div>
+                      ))}
+                    </div>
+                  </div>
+                })}
               </div>
             );
           });
