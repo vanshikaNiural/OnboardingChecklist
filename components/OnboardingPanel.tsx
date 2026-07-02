@@ -106,6 +106,39 @@ export default function OnboardingPanel({
       </div>
 
       <div className="space-y-6">
+        {/* Transfer section FIRST (only in transfer mode) */}
+        {onboardingType === 'transfer' && Object.values(groupedByStage).flat().some((item: any) => item.transfer_only) && (
+          <div className="border border-purple-200 rounded-lg overflow-hidden bg-purple-50">
+            <div className="bg-purple-100 border-b border-purple-200 px-6 py-4">
+              <div className="text-sm font-semibold text-purple-700 uppercase tracking-wider">
+                Transfer-specific steps
+              </div>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {Object.values(groupedByStage)
+                .flat()
+                .filter((item: any) => item.transfer_only)
+                .map((item: any) => (
+                  <OnboardingItem
+                    key={item.id}
+                    item={item}
+                    state={states.get(item.id)}
+                    onUpdateState={(updates: any) => onUpdateState(item.id, updates)}
+                    onEditTitle={(itemId: string, old: string, new_val: string, name: string) => onEditTitle(itemId, old, new_val, name)}
+                    onEditDescription={(itemId: string, old: string, new_val: string, name: string) => onEditDescription(itemId, old, new_val, name)}
+                    onDelete={(itemId: string) => onDelete(itemId)}
+                    onChangeStage={(itemId: string, newStage: number) => onChangeStage(itemId, newStage)}
+                    isDraggingOver={dragOverItem === item.id}
+                    onDragOver={(e: any) => handleDragOverItem(e, item.id)}
+                    onDragLeave={handleDragLeaveItem}
+                    onDrop={(e: any) => handleDropItem(e, item.id)}
+                  />
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Regular stages second */}
         {Object.entries(groupedByStage)
           .sort(([a], [b]) => parseInt(a) - parseInt(b))
           .map(([stageNum, stageItems]) => {
@@ -163,37 +196,6 @@ export default function OnboardingPanel({
             );
           })}
       </div>
-
-      {onboardingType === 'transfer' && Object.values(groupedByStage).flat().some((item: any) => item.transfer_only) && (
-        <div className="mt-6 border border-purple-200 rounded-lg overflow-hidden bg-purple-50">
-          <div className="bg-purple-100 border-b border-purple-200 px-6 py-4">
-            <div className="text-sm font-semibold text-purple-700 uppercase tracking-wider">
-              Transfer-specific steps
-            </div>
-          </div>
-          <div className="divide-y divide-gray-200">
-            {Object.values(groupedByStage)
-              .flat()
-              .filter((item: any) => item.transfer_only)
-              .map((item: any) => (
-                <OnboardingItem
-                  key={item.id}
-                  item={item}
-                  state={states.get(item.id)}
-                  onUpdateState={(updates: any) => onUpdateState(item.id, updates)}
-                  onEditTitle={(itemId: string, old: string, new_val: string, name: string) => onEditTitle(itemId, old, new_val, name)}
-                  onEditDescription={(itemId: string, old: string, new_val: string, name: string) => onEditDescription(itemId, old, new_val, name)}
-                  onDelete={(itemId: string) => onDelete(itemId)}
-                  onChangeStage={(itemId: string, newStage: number) => onChangeStage(itemId, newStage)}
-                  isDraggingOver={dragOverItem === item.id}
-                  onDragOver={(e: any) => handleDragOverItem(e, item.id)}
-                  onDragLeave={handleDragLeaveItem}
-                  onDrop={(e: any) => handleDropItem(e, item.id)}
-                />
-              ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
