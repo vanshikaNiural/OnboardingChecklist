@@ -159,15 +159,18 @@ export default function OnboardingPanel({
                 {sortedTiers.map((tier) => {
                   const tierItems = itemsByTier[tier];
                   const hasGate = tierItems.some((item: any) => item.is_gate);
-                  {tier !== 'default' && (
-                    <div className="text-sm font-semibold text-purple-700 uppercase tracking-wider mb-4 px-6 py-2">
-                      {TIER_LABELS[tier] || tier}
-                    </div>
-                  )}
+                  <div key={`tier-${stageNum}-${tier}`} className="border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Tier header - for transfer-only items */}
+                    {tier === 'transfer-only' && (
+                      <div className="bg-purple-50 border-b border-purple-200 px-6 py-4">
+                        <div className="text-sm font-semibold text-purple-700 uppercase tracking-wider">
+                          {TIER_LABELS[tier] || tier}
+                        </div>
+                      </div>
+                    )}
 
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    {/* Stage header - only show for first tier */}
-                    {tier === sortedTiers[0] && (
+                    {/* Stage header - only for non-transfer tiers */}
+                    {tier !== 'transfer-only' && tier === sortedTiers[0] && (
                       <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-purple-100 text-purple-700 rounded flex items-center justify-center text-sm font-semibold">
