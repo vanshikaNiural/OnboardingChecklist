@@ -34,7 +34,7 @@ export default function OnboardingPanel({
 }: any) {
   const [dragOverItem, setDragOverItem] = useState<string | null>(null);
 
-  // Group items by stage, filtering transfer-only items
+  // Group items by stage, filtering transfer-only items, prioritize transfer first
   const groupedByStage = useMemo(() => {
     const groups: { [key: number]: any[] } = {};
     items
@@ -45,6 +45,14 @@ export default function OnboardingPanel({
           return false;
         }
         return true;
+      })
+      .sort((a: any, b: any) => {
+        // In transfer mode, show transfer-only items first
+        if (onboardingType === 'transfer') {
+          if (a.transfer_only && !b.transfer_only) return -1;
+          if (!a.transfer_only && b.transfer_only) return 1;
+        }
+        return 0;
       })
       .forEach((item: any) => {
         if (!groups[item.stage_num]) {
