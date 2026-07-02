@@ -24,7 +24,8 @@ export default function OnboardingItem({
   state,
   onUpdateState,
   onEditTitle,
-  onEditDescription
+  onEditDescription,
+  onDelete
 }: any) {
   const currentStatus = state?.status || 'pending';
   const [showNotes, setShowNotes] = useState(!!state?.notes);
@@ -133,6 +134,17 @@ export default function OnboardingItem({
                     title="Edit title"
                   >
                     ✏️
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm('Delete this item? (soft delete)')) {
+                        onDelete(item.id);
+                      }
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-red-600"
+                    title="Delete item"
+                  >
+                    🗑️
                   </button>
                   {item.is_verified ? (
                     <span className="inline-block px-2 py-0.5 text-xs font-semibold text-green-700 bg-green-100 rounded">

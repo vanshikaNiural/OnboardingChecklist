@@ -20,6 +20,7 @@ export default function OnboardingPanel({
   onUpdateState,
   onEditTitle,
   onEditDescription,
+  onDelete,
   stageLabels
 }: any) {
   // Group items by stage
@@ -122,6 +123,7 @@ export default function OnboardingPanel({
                       onUpdateState={(updates: any) => onUpdateState(item.id, updates)}
                       onEditTitle={(itemId: string, old: string, new_val: string, name: string) => onEditTitle(itemId, old, new_val, name)}
                       onEditDescription={(itemId: string, old: string, new_val: string, name: string) => onEditDescription(itemId, old, new_val, name)}
+                      onDelete={(itemId: string) => onDelete(itemId)}
                     />
                   ))}
                 </div>

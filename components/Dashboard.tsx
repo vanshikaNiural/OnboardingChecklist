@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import OnboardingPanel from './OnboardingPanel';
+import AddItemModal from './AddItemModal';
 
 const STAKEHOLDERS = [
   { id: 'client', label: 'Client', accent: '#714DFF' },
@@ -27,6 +28,7 @@ export default function Dashboard() {
   const [states, setStates] = useState<Map<string, any>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState('Synced');
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const supabase = createClient();
 
@@ -153,6 +155,59 @@ export default function Dashboard() {
     }
   }
 
+  async function deleteItem(itemId: string) {
+    setSyncStatus('Deleting...');
+    try {
+      await supabase
+        .from('onboarding_items')
+        .update({ is_removed: true })
+        .eq('id', itemId);
+
+      setSyncStatus('Deleted ✓');
+      setTimeout(() => setSyncStatus('Synced'), 1200);
+      loadData();
+    } catch (err) {
+      console.error('Delete failed:', err);
+      setSyncStatus('Delete failed');
+    }
+  }
+
+  async function addItem(data: any) {
+    setSyncStatus('Creating...');
+    try {
+      const itemsCount = items.filter(i => i.stakeholder_id === activeTab && !i.is_removed).length;
+      const newId = `${activeTab}-${data.stage_num}-new-${Date.now()}`;
+      const newOrderIndex = Math.max(...items.filter(i => i.stakeholder_id === activeTab).map(i => i.order_index || 0), -1) + 1;
+
+      await supabase.from('onboarding_items').insert([{
+        id: newId,
+        stage_num: data.stage_num,
+        stakeholder_id: data.stakeholder_id,
+        title: data.title,
+        description: data.description,
+        is_gate: false,
+        is_recurring: false,
+        is_removed: false,
+        is_verified: false,
+        order_index: newOrderIndex
+      }]);
+
+      const stateId = `state-${newId}`;
+      await supabase.from('item_states').insert([{
+        id: stateId,
+        item_id: newId,
+        status: 'pending'
+      }]);
+
+      setSyncStatus('Created ✓');
+      setTimeout(() => setSyncStatus('Synced'), 1200);
+      loadData();
+    } catch (err) {
+      console.error('Create failed:', err);
+      setSyncStatus('Create failed');
+    }
+  }
+
   const currentStakeholder = STAKEHOLDERS.find(s => s.id === activeTab);
   const activeItems = items.filter(item => item.stakeholder_id === activeTab);
 
@@ -220,33 +275,41 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 border-b border-gray-200">
-            {STAKEHOLDERS.map(stakeholder => {
-              const count = activeItems.filter(
-                item => item.stakeholder_id === stakeholder.id && !item.is_removed
-              ).length;
-              const complete = activeItems
-                .filter(item => item.stakeholder_id === stakeholder.id && !item.is_removed)
-                .filter(item => states.get(item.id)?.status === 'complete').length;
+          {/* Tabs and Add Button */}
+          <div className="flex gap-1 border-b border-gray-200 items-center justify-between">
+            <div className="flex gap-1">
+              {STAKEHOLDERS.map(stakeholder => {
+                const count = activeItems.filter(
+                  item => item.stakeholder_id === stakeholder.id && !item.is_removed
+                ).length;
+                const complete = activeItems
+                  .filter(item => item.stakeholder_id === stakeholder.id && !item.is_removed)
+                  .filter(item => states.get(item.id)?.status === 'complete').length;
 
-              return (
-                <button
-                  key={stakeholder.id}
-                  onClick={() => setActiveTab(stakeholder.id)}
-                  className={`px-4 py-3 text-sm font-medium border-b-2 transition ${
-                    activeTab === stakeholder.id
-                      ? 'border-purple-600 text-gray-900'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  {stakeholder.label}
-                  <span className="ml-2 text-xs text-gray-500">
-                    {complete}/{count}
-                  </span>
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={stakeholder.id}
+                    onClick={() => setActiveTab(stakeholder.id)}
+                    className={`px-4 py-3 text-sm font-medium border-b-2 transition ${
+                      activeTab === stakeholder.id
+                        ? 'border-purple-600 text-gray-900'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {stakeholder.label}
+                    <span className="ml-2 text-xs text-gray-500">
+                      {complete}/{count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-3 py-2 bg-purple-600 text-white rounded text-sm font-medium hover:bg-purple-700 mr-4"
+            >
+              + Add item
+            </button>
           </div>
         </div>
       </header>
@@ -260,9 +323,17 @@ export default function Dashboard() {
           onUpdateState={updateItemState}
           onEditTitle={editItemTitle}
           onEditDescription={editItemDescription}
+          onDelete={deleteItem}
           stageLabels={STAGES}
         />
       </main>
+
+      <AddItemModal
+        isOpen={showAddModal}
+        stakeholder={activeTab}
+        onClose={() => setShowAddModal(false)}
+        onAdd={addItem}
+      />
     </div>
   );
 }

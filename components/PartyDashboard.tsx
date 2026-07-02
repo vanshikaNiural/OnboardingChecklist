@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import OnboardingPanel from './OnboardingPanel';
+import AddItemModal from './AddItemModal';
 
 const STAKEHOLDER_INFO: Record<string, { label: string; short: string; accent: string }> = {
   client: {
@@ -57,6 +58,7 @@ export default function PartyDashboard({ party }: { party: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState('Synced');
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const supabase = createClient();
   const partyInfo = STAKEHOLDER_INFO[party as keyof typeof STAKEHOLDER_INFO];
@@ -208,6 +210,59 @@ export default function PartyDashboard({ party }: { party: string }) {
     }
   }
 
+  async function deleteItem(itemId: string) {
+    setSyncStatus('Deleting...');
+    try {
+      await supabase
+        .from('onboarding_items')
+        .update({ is_removed: true })
+        .eq('id', itemId);
+
+      setSyncStatus('Deleted ✓');
+      setTimeout(() => setSyncStatus('Synced'), 1200);
+      loadData();
+    } catch (err) {
+      console.error('Delete failed:', err);
+      setSyncStatus('Delete failed');
+    }
+  }
+
+  async function addItem(data: any) {
+    setSyncStatus('Creating...');
+    try {
+      const itemsCount = items.filter(i => i.stakeholder_id === party && !i.is_removed).length;
+      const newId = `${party}-${data.stage_num}-new-${Date.now()}`;
+      const newOrderIndex = Math.max(...items.filter(i => i.stakeholder_id === party).map(i => i.order_index || 0), -1) + 1;
+
+      await supabase.from('onboarding_items').insert([{
+        id: newId,
+        stage_num: data.stage_num,
+        stakeholder_id: data.stakeholder_id,
+        title: data.title,
+        description: data.description,
+        is_gate: false,
+        is_recurring: false,
+        is_removed: false,
+        is_verified: false,
+        order_index: newOrderIndex
+      }]);
+
+      const stateId = `state-${newId}`;
+      await supabase.from('item_states').insert([{
+        id: stateId,
+        item_id: newId,
+        status: 'pending'
+      }]);
+
+      setSyncStatus('Created ✓');
+      setTimeout(() => setSyncStatus('Synced'), 1200);
+      loadData();
+    } catch (err) {
+      console.error('Create failed:', err);
+      setSyncStatus('Create failed');
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -294,10 +349,16 @@ export default function PartyDashboard({ party }: { party: string }) {
             </div>
           </div>
 
-          <div className="text-xs">
+          <div className="text-xs flex items-center gap-4">
             <a href="/" className="text-purple-600 hover:text-purple-700 font-medium">
               ← Back to all parties
             </a>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-3 py-1 bg-purple-600 text-white rounded text-sm font-medium hover:bg-purple-700"
+            >
+              + Add item
+            </button>
           </div>
         </div>
       </header>
@@ -310,9 +371,17 @@ export default function PartyDashboard({ party }: { party: string }) {
           onUpdateState={updateItemState}
           onEditTitle={editItemTitle}
           onEditDescription={editItemDescription}
+          onDelete={deleteItem}
           stageLabels={STAGES}
         />
       </main>
+
+      <AddItemModal
+        isOpen={showAddModal}
+        stakeholder={party}
+        onClose={() => setShowAddModal(false)}
+        onAdd={addItem}
+      />
     </div>
   );
 }
