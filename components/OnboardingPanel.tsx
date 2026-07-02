@@ -24,7 +24,8 @@ export default function OnboardingPanel({
   onChangeStage,
   stageLabels
 }: any) {
-  const [dragOverStage, setDragOverStage] = useState<number | null>(null);
+  const [dragOverItem, setDragOverItem] = useState<string | null>(null);
+
   // Group items by stage
   const groupedByStage = useMemo(() => {
     const groups: { [key: number]: any[] } = {};
@@ -60,35 +61,27 @@ export default function OnboardingPanel({
     return counts;
   }, [items, states]);
 
-  const handleDragOver = (e: React.DragEvent, stageNum: number) => {
+  const handleDragOverItem = (e: React.DragEvent, targetItemId: string) => {
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer!.dropEffect = 'move';
-    setDragOverStage(stageNum);
+    setDragOverItem(targetItemId);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOverStage(null);
+  const handleDragLeaveItem = () => {
+    setDragOverItem(null);
   };
 
-  const handleDrop = (e: React.DragEvent, stageNum: number) => {
+  const handleDropItem = (e: React.DragEvent, targetItemId: string) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const itemId = e.dataTransfer!.getData('itemId');
-    const sourceStage = e.dataTransfer!.getData('sourceStage');
+    const draggedItemId = e.dataTransfer!.getData('itemId');
 
-    if (itemId && sourceStage) {
-      const newStage = parseInt(stageNum.toString());
-      const oldStage = parseInt(sourceStage);
-
-      if (oldStage !== newStage && onChangeStage) {
-        onChangeStage(itemId, newStage);
-      }
+    if (draggedItemId && draggedItemId !== targetItemId && onChangeStage) {
+      onChangeStage(draggedItemId, targetItemId);
     }
-    setDragOverStage(null);
+    setDragOverItem(null);
   };
 
   return (
@@ -120,10 +113,7 @@ export default function OnboardingPanel({
             return (
               <div
                 key={stageNum}
-                onDragOver={(e) => handleDragOver(e, parseInt(stageNum))}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, parseInt(stageNum))}
-                className={`border rounded-lg overflow-hidden transition ${dragOverStage === parseInt(stageNum) ? 'border-purple-500 bg-purple-50' : 'border-gray-200'}`}
+                className="border border-gray-200 rounded-lg overflow-hidden"
               >
                 {/* Stage header */}
                 <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -164,6 +154,10 @@ export default function OnboardingPanel({
                       onEditDescription={(itemId: string, old: string, new_val: string, name: string) => onEditDescription(itemId, old, new_val, name)}
                       onDelete={(itemId: string) => onDelete(itemId)}
                       onChangeStage={(itemId: string, newStage: number) => onChangeStage(itemId, newStage)}
+                      isDraggingOver={dragOverItem === item.id}
+                      onDragOver={(e: any) => handleDragOverItem(e, item.id)}
+                      onDragLeave={handleDragLeaveItem}
+                      onDrop={(e: any) => handleDropItem(e, item.id)}
                     />
                   ))}
                 </div>

@@ -26,7 +26,11 @@ export default function OnboardingItem({
   onEditTitle,
   onEditDescription,
   onDelete,
-  onChangeStage
+  onChangeStage,
+  isDraggingOver,
+  onDragOver,
+  onDragLeave,
+  onDrop
 }: any) {
   const currentStatus = state?.status || 'pending';
   const [showNotes, setShowNotes] = useState(!!state?.notes);
@@ -93,7 +97,10 @@ export default function OnboardingItem({
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      className={`px-6 py-4 border-l-4 cursor-move transition ${isDragging ? 'opacity-50 bg-purple-50' : ''} ${STATUS_COLORS[currentStatus as keyof typeof STATUS_COLORS]}`}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`px-6 py-4 border-l-4 cursor-move transition ${isDragging ? 'opacity-50 bg-purple-50' : ''} ${isDraggingOver ? 'bg-purple-100 border-l-purple-500' : ''} ${STATUS_COLORS[currentStatus as keyof typeof STATUS_COLORS]}`}
     >
       <div className="flex gap-4">
         {/* Status circle */}

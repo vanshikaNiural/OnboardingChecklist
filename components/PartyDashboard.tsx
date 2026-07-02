@@ -263,22 +263,26 @@ export default function PartyDashboard({ party }: { party: string }) {
     }
   }
 
-  async function changeItemStage(itemId: string, newStage: number) {
-    setSyncStatus('Moving...');
+  async function changeItemStage(draggedId: string, targetId: string) {
+    setSyncStatus('Reordering...');
     try {
-      const newOrderIndex = Math.max(...items.filter(i => i.stage_num === newStage).map(i => i.order_index || 0), -1) + 1;
+      const draggedItem = items.find(i => i.id === draggedId);
+      const targetItem = items.find(i => i.id === targetId);
 
-      await supabase
-        .from('onboarding_items')
-        .update({ stage_num: newStage, order_index: newOrderIndex })
-        .eq('id', itemId);
+      if (draggedItem && targetItem) {
+        // Swap order_index values
+        await Promise.all([
+          supabase.from('onboarding_items').update({ order_index: targetItem.order_index }).eq('id', draggedId),
+          supabase.from('onboarding_items').update({ order_index: draggedItem.order_index }).eq('id', targetId)
+        ]);
 
-      setSyncStatus('Moved ✓');
-      setTimeout(() => setSyncStatus('Synced'), 1200);
-      loadData();
+        setSyncStatus('Reordered ✓');
+        setTimeout(() => setSyncStatus('Synced'), 1200);
+        loadData();
+      }
     } catch (err) {
-      console.error('Move failed:', err);
-      setSyncStatus('Move failed');
+      console.error('Reorder failed:', err);
+      setSyncStatus('Reorder failed');
     }
   }
 
