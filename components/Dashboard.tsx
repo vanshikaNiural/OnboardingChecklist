@@ -50,7 +50,7 @@ export default function Dashboard() {
   async function loadData() {
     try {
       const [itemsRes, statesRes] = await Promise.all([
-        supabase.from('onboarding_items').select('*'),
+        supabase.from('onboarding_items').select('*').order('order_index', { ascending: true }),
         supabase.from('item_states').select('*')
       ]);
 

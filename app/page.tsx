@@ -260,6 +260,7 @@ async function seedDatabase(supabase: any) {
 
   // Seed items with verification status
   const itemsToInsert: any[] = [];
+  let orderIndex = 0;
   Object.entries(DATA).forEach(([stakeholder, groups]) => {
     groups.forEach((group: any) => {
       group.items?.forEach((item: any, idx: number) => {
@@ -279,7 +280,8 @@ async function seedDatabase(supabase: any) {
             is_removed: isRemoved,
             is_verified: isVerified,
             last_edited_by: isVerified ? 'Liz (validation session)' : null,
-            last_edited_at: isVerified ? new Date().toISOString() : null
+            last_edited_at: isVerified ? new Date().toISOString() : null,
+            order_index: orderIndex++
           });
         }
       });

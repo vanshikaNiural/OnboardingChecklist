@@ -108,7 +108,7 @@ export default function PartyDashboard({ party }: { party: string }) {
   async function loadData() {
     try {
       const [itemsRes, statesRes] = await Promise.all([
-        supabase.from('onboarding_items').select('*').eq('stakeholder_id', party),
+        supabase.from('onboarding_items').select('*').eq('stakeholder_id', party).order('order_index', { ascending: true }),
         supabase.from('item_states').select('*')
       ]);
 
