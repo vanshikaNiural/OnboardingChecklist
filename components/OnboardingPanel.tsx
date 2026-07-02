@@ -62,21 +62,31 @@ export default function OnboardingPanel({
 
   const handleDragOver = (e: React.DragEvent, stageNum: number) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer!.dropEffect = 'move';
     setDragOverStage(stageNum);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setDragOverStage(null);
   };
 
   const handleDrop = (e: React.DragEvent, stageNum: number) => {
     e.preventDefault();
-    const itemId = e.dataTransfer!.getData('itemId');
-    const sourceStage = parseInt(e.dataTransfer!.getData('sourceStage'));
+    e.stopPropagation();
 
-    if (sourceStage !== stageNum && onChangeStage) {
-      onChangeStage(itemId, stageNum);
+    const itemId = e.dataTransfer!.getData('itemId');
+    const sourceStage = e.dataTransfer!.getData('sourceStage');
+
+    if (itemId && sourceStage) {
+      const newStage = parseInt(stageNum.toString());
+      const oldStage = parseInt(sourceStage);
+
+      if (oldStage !== newStage && onChangeStage) {
+        onChangeStage(itemId, newStage);
+      }
     }
     setDragOverStage(null);
   };

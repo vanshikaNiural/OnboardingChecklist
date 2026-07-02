@@ -148,7 +148,7 @@ export default function OnboardingItem({
                   <h3 className="font-medium text-gray-900">{item.title}</h3>
                   <button
                     onClick={() => setEditingTitle(true)}
-                    className="opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-purple-600"
+                    className="text-gray-400 hover:text-purple-600 transition"
                     title="Edit title"
                   >
                     ✏️
@@ -159,7 +159,7 @@ export default function OnboardingItem({
                         onDelete(item.id);
                       }
                     }}
-                    className="opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-red-600"
+                    className="text-gray-400 hover:text-red-600 transition"
                     title="Delete item"
                   >
                     🗑️
@@ -202,7 +202,7 @@ export default function OnboardingItem({
                       <p className="text-sm text-gray-600 mb-2 flex-1">{item.description}</p>
                       <button
                         onClick={() => setEditingDescription(true)}
-                        className="opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-purple-600 flex-shrink-0"
+                        className="text-gray-400 hover:text-purple-600 transition flex-shrink-0"
                         title="Edit description"
                       >
                         ✏️
