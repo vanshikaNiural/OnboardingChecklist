@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import OnboardingItem from './OnboardingItem';
 
 const STATUS_COLORS = {
@@ -21,8 +21,10 @@ export default function OnboardingPanel({
   onEditTitle,
   onEditDescription,
   onDelete,
+  onChangeStage,
   stageLabels
 }: any) {
+  const [dragOverStage, setDragOverStage] = useState<number | null>(null);
   // Group items by stage
   const groupedByStage = useMemo(() => {
     const groups: { [key: number]: any[] } = {};
@@ -58,6 +60,27 @@ export default function OnboardingPanel({
     return counts;
   }, [items, states]);
 
+  const handleDragOver = (e: React.DragEvent, stageNum: number) => {
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = 'move';
+    setDragOverStage(stageNum);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverStage(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, stageNum: number) => {
+    e.preventDefault();
+    const itemId = e.dataTransfer!.getData('itemId');
+    const sourceStage = parseInt(e.dataTransfer!.getData('sourceStage'));
+
+    if (sourceStage !== stageNum && onChangeStage) {
+      onChangeStage(itemId, stageNum);
+    }
+    setDragOverStage(null);
+  };
+
   return (
     <div>
       {/* Status summary */}
@@ -85,7 +108,13 @@ export default function OnboardingPanel({
             const hasGate = (stageItems as any[]).some((item: any) => item.is_gate);
 
             return (
-              <div key={stageNum} className="border border-gray-200 rounded-lg overflow-hidden">
+              <div
+                key={stageNum}
+                onDragOver={(e) => handleDragOver(e, parseInt(stageNum))}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, parseInt(stageNum))}
+                className={`border rounded-lg overflow-hidden transition ${dragOverStage === parseInt(stageNum) ? 'border-purple-500 bg-purple-50' : 'border-gray-200'}`}
+              >
                 {/* Stage header */}
                 <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -124,6 +153,7 @@ export default function OnboardingPanel({
                       onEditTitle={(itemId: string, old: string, new_val: string, name: string) => onEditTitle(itemId, old, new_val, name)}
                       onEditDescription={(itemId: string, old: string, new_val: string, name: string) => onEditDescription(itemId, old, new_val, name)}
                       onDelete={(itemId: string) => onDelete(itemId)}
+                      onChangeStage={(itemId: string, newStage: number) => onChangeStage(itemId, newStage)}
                     />
                   ))}
                 </div>

@@ -25,12 +25,14 @@ export default function OnboardingItem({
   onUpdateState,
   onEditTitle,
   onEditDescription,
-  onDelete
+  onDelete,
+  onChangeStage
 }: any) {
   const currentStatus = state?.status || 'pending';
   const [showNotes, setShowNotes] = useState(!!state?.notes);
   const [notes, setNotes] = useState(state?.notes || '');
   const [date, setDate] = useState(state?.completed_date || '');
+  const [isDragging, setIsDragging] = useState(false);
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
@@ -75,8 +77,24 @@ export default function OnboardingItem({
     setEditingDescription(false);
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    setIsDragging(true);
+    e.dataTransfer!.effectAllowed = 'move';
+    e.dataTransfer!.setData('itemId', item.id);
+    e.dataTransfer!.setData('sourceStage', item.stage_num.toString());
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
   return (
-    <div className={`px-6 py-4 border-l-4 ${STATUS_COLORS[currentStatus as keyof typeof STATUS_COLORS]}`}>
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      className={`px-6 py-4 border-l-4 cursor-move transition ${isDragging ? 'opacity-50 bg-purple-50' : ''} ${STATUS_COLORS[currentStatus as keyof typeof STATUS_COLORS]}`}
+    >
       <div className="flex gap-4">
         {/* Status circle */}
         <button

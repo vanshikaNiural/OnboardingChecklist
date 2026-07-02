@@ -208,6 +208,25 @@ export default function Dashboard() {
     }
   }
 
+  async function changeItemStage(itemId: string, newStage: number) {
+    setSyncStatus('Moving...');
+    try {
+      const newOrderIndex = Math.max(...items.filter(i => i.stage_num === newStage).map(i => i.order_index || 0), -1) + 1;
+
+      await supabase
+        .from('onboarding_items')
+        .update({ stage_num: newStage, order_index: newOrderIndex })
+        .eq('id', itemId);
+
+      setSyncStatus('Moved ✓');
+      setTimeout(() => setSyncStatus('Synced'), 1200);
+      loadData();
+    } catch (err) {
+      console.error('Move failed:', err);
+      setSyncStatus('Move failed');
+    }
+  }
+
   const currentStakeholder = STAKEHOLDERS.find(s => s.id === activeTab);
   const activeItems = items.filter(item => item.stakeholder_id === activeTab);
 
@@ -324,6 +343,7 @@ export default function Dashboard() {
           onEditTitle={editItemTitle}
           onEditDescription={editItemDescription}
           onDelete={deleteItem}
+          onChangeStage={changeItemStage}
           stageLabels={STAGES}
         />
       </main>

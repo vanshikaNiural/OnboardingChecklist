@@ -263,6 +263,25 @@ export default function PartyDashboard({ party }: { party: string }) {
     }
   }
 
+  async function changeItemStage(itemId: string, newStage: number) {
+    setSyncStatus('Moving...');
+    try {
+      const newOrderIndex = Math.max(...items.filter(i => i.stage_num === newStage).map(i => i.order_index || 0), -1) + 1;
+
+      await supabase
+        .from('onboarding_items')
+        .update({ stage_num: newStage, order_index: newOrderIndex })
+        .eq('id', itemId);
+
+      setSyncStatus('Moved ✓');
+      setTimeout(() => setSyncStatus('Synced'), 1200);
+      loadData();
+    } catch (err) {
+      console.error('Move failed:', err);
+      setSyncStatus('Move failed');
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -372,6 +391,7 @@ export default function PartyDashboard({ party }: { party: string }) {
           onEditTitle={editItemTitle}
           onEditDescription={editItemDescription}
           onDelete={deleteItem}
+          onChangeStage={changeItemStage}
           stageLabels={STAGES}
         />
       </main>
